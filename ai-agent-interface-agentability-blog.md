@@ -1,3 +1,11 @@
+---
+layout: article
+title: "AI Agent 时代，软件项目需要一层新的基础设施：Agent Interface"
+description: "从 AI Coding 的真实研发流程出发，讨论软件项目为什么需要面向 Agent 的观察和操作接口。"
+category: Agent Engineering
+weight: 1
+---
+
 # AI Agent 时代，软件项目需要一层新的基础设施：Agent Interface
 
 AI Coding 正在迅速进入真实的软件研发流程。

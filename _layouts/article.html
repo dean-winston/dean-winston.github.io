@@ -1,0 +1,11 @@
+---
+layout: default
+---
+<article class="article">
+  <header class="article-header">
+    <a class="back-link" href="{{ '/' | relative_url }}">← 返回文章列表</a>
+    <h1>{{ page.title | escape }}</h1>
+    {% if page.category %}<p class="article-meta">{{ page.category }}</p>{% endif %}
+  </header>
+  <div class="article-body">{{ content }}</div>
+</article>

@@ -1,0 +1,32 @@
+---
+layout: default
+title: 搜索
+permalink: /search/
+---
+<h1 class="page-title">搜索文章</h1>
+<label for="search-input">按标题或简介搜索</label>
+<input class="search-input" id="search-input" type="search" autocomplete="off" placeholder="输入关键词…">
+<p class="search-count" id="search-count"></p>
+<ul class="archive-list" id="search-results">
+{% assign articles = site.pages | where: 'layout', 'article' | sort: 'weight' %}
+{% for article in articles %}
+  <li data-search="{{ article.title | append: ' ' | append: article.description | escape }}"><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{{ article.category }}</small></li>
+{% endfor %}
+</ul>
+<script>
+  const input = document.getElementById('search-input');
+  const items = [...document.querySelectorAll('#search-results li')];
+  const count = document.getElementById('search-count');
+  function filterArticles() {
+    const query = input.value.trim().toLocaleLowerCase();
+    let visible = 0;
+    for (const item of items) {
+      const match = item.dataset.search.toLocaleLowerCase().includes(query);
+      item.hidden = !match;
+      if (match) visible++;
+    }
+    count.textContent = `找到 ${visible} 篇文章`;
+  }
+  input.addEventListener('input', filterArticles);
+  filterArticles();
+</script>

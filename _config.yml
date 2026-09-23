@@ -1,0 +1,8 @@
+title: "Dean's Blog"
+description: "游戏开发 / AI Coding / Agent Engineering"
+lang: zh-CN
+url: "https://dean-winston.github.io"
+theme: null
+markdown: kramdown
+plugins:
+  - jekyll-seo-tag

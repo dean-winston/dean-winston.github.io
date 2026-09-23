@@ -1,0 +1,12 @@
+---
+layout: default
+title: 归档
+permalink: /archive/
+---
+<h1 class="page-title">文章归档</h1>
+<ul class="archive-list">
+{% assign articles = site.pages | where: 'layout', 'article' | sort: 'weight' %}
+{% for article in articles %}
+  <li><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{{ article.category }}</small></li>
+{% endfor %}
+</ul>

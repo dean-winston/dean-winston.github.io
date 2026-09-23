@@ -1,3 +1,11 @@
+---
+layout: article
+title: "为什么 Programmatic Tool Calling 会成为 Agent 的重要方向"
+description: "分析 Agent 调用工具的需求，以及程序化工具调用带来的能力变化。"
+category: Agent Engineering
+weight: 3
+---
+
 # 为什么 Programmatic Tool Calling 会成为 Agent 的重要方向
 
 当 AI Agent 开始从“会回答问题”走向“真正执行任务”之后，Tool Calling 很快成为了核心能力。
