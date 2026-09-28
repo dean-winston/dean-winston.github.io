@@ -4,6 +4,8 @@ title: "CLI 与 MCP：Agent 工具接口应该如何选择"
 description: "从组合能力、数据规模、业务语义和操作风险出发，讨论 Agent 工具接口如何在 CLI 与 MCP 之间选择。"
 category: Agent Engineering
 weight: 4
+published_at: "2026-09-23T20:26:30+08:00"
+updated_at: "2026-09-23T20:26:30+08:00"
 topic: tool-protocol
 topic_order: 2
 ---

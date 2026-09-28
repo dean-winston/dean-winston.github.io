@@ -5,7 +5,11 @@ layout: default
   <header class="article-header">
     <a class="back-link" href="{{ '/' | relative_url }}">← 返回文章列表</a>
     <h1>{{ page.title | escape }}</h1>
-    {% if page.category %}<p class="article-meta">{{ page.category }}</p>{% endif %}
+    <div class="article-meta">
+      {% if page.category %}<span>{{ page.category }}</span>{% endif %}
+      {% if page.published_at %}<span>发布于 <time datetime="{{ page.published_at }}">{{ page.published_at | slice: 0, 16 | replace: 'T', ' ' }}（UTC+8）</time></span>{% endif %}
+      {% if page.updated_at %}<span>修改于 <time datetime="{{ page.updated_at }}">{{ page.updated_at | slice: 0, 16 | replace: 'T', ' ' }}（UTC+8）</time></span>{% endif %}
+    </div>
   </header>
   <div class="article-body">{{ content }}</div>
   {% if page.topic %}

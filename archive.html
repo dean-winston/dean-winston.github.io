@@ -7,6 +7,6 @@ permalink: /archive/
 <ul class="archive-list">
 {% assign articles = site.pages | where: 'layout', 'article' | sort: 'weight' %}
 {% for article in articles %}
-  <li><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{{ article.category }}</small></li>
+  <li><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{% if article.published_at %}{{ article.published_at | slice: 0, 10 }}{% endif %}</small></li>
 {% endfor %}
 </ul>

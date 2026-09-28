@@ -11,7 +11,11 @@ layout: default
   <article class="post-card">
     <h2><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a></h2>
     <p>{{ article.description | escape }}</p>
-    <div class="post-meta">{{ article.category }}</div>
+    <div class="post-meta">
+      <span>{{ article.category }}</span>
+      {% if article.published_at %}<span>发布于 <time datetime="{{ article.published_at }}">{{ article.published_at | slice: 0, 10 }}</time></span>{% endif %}
+      {% if article.updated_at %}<span>修改于 <time datetime="{{ article.updated_at }}">{{ article.updated_at | slice: 0, 10 }}</time></span>{% endif %}
+    </div>
   </article>
   {% endfor %}
 </section>

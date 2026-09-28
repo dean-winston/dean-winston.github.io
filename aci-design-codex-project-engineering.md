@@ -4,6 +4,8 @@ title: "从 Tool 到 ACI：借鉴 Codex，设计让 Agent 真正好用的项目�
 description: "从 Codex 的工具与反馈设计出发，讨论如何为真实项目构建可靠、好用的 Agent-Computer Interface。"
 category: Agent Engineering
 weight: 6
+published_at: "2026-09-28T11:44:24+08:00"
+updated_at: "2026-09-28T11:44:24+08:00"
 topic: project-interface
 topic_order: 3
 ---

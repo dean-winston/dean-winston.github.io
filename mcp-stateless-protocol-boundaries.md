@@ -4,6 +4,8 @@ title: "MCP 为什么走向 Stateless：从一次协议升级看状态、连接�
 description: "从 MCP 协议调整出发，讨论连接状态、任务状态与业务状态之间的边界。"
 category: Agent Engineering
 weight: 5
+published_at: "2026-09-23T21:01:34+08:00"
+updated_at: "2026-09-23T21:01:34+08:00"
 topic: tool-protocol
 topic_order: 3
 ---

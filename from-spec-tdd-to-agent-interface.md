@@ -4,6 +4,8 @@ title: "从 Spec + TDD 到 Agent Interface：我对 AI 研发着力点的一次�
 description: "从规范和测试，到 Harness 与 Agent Interface，梳理 AI 研发实践中的思路变化。"
 category: AI Coding
 weight: 2
+published_at: "2026-09-23T11:43:03+08:00"
+updated_at: "2026-09-23T11:43:03+08:00"
 topic: project-interface
 topic_order: 1
 ---

@@ -4,6 +4,8 @@ title: "为什么 Programmatic Tool Calling 会成为 Agent 的重要方向"
 description: "分析 Agent 调用工具的需求，以及程序化工具调用带来的能力变化。"
 category: Agent Engineering
 weight: 3
+published_at: "2026-09-23T11:43:03+08:00"
+updated_at: "2026-09-23T11:43:03+08:00"
 topic: tool-protocol
 topic_order: 1
 ---
