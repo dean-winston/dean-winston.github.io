@@ -27,3 +27,18 @@ permalink: /topics/
     {% endfor %}
   </ol>
 </section>
+
+<section class="topic-section" id="yao-shunyu-papers">
+  <h2>姚顺宇的论文精读</h2>
+  <p>逐篇梳理论文的问题、方法、实验结果与工程启发。</p>
+  {% assign yao_articles = site.pages | where: 'topic', 'yao-shunyu-papers' | sort: 'topic_order' %}
+  {% if yao_articles.size > 0 %}
+  <ol class="topic-list">
+    {% for article in yao_articles %}
+    <li><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><span>{{ article.description | escape }}</span></li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>文章准备中。</p>
+  {% endif %}
+</section>
