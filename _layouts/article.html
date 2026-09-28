@@ -8,4 +8,22 @@ layout: default
     {% if page.category %}<p class="article-meta">{{ page.category }}</p>{% endif %}
   </header>
   <div class="article-body">{{ content }}</div>
+  {% if page.topic %}
+    {% assign topic_articles = site.pages | where: 'topic', page.topic | sort: 'topic_order' %}
+    {% for article in topic_articles %}
+      {% if article.url == page.url %}
+        {% assign previous_index = forloop.index0 | minus: 1 %}
+        {% assign next_index = forloop.index0 | plus: 1 %}
+        {% unless forloop.first %}{% assign previous_article = topic_articles[previous_index] %}{% endunless %}
+        {% unless forloop.last %}{% assign next_article = topic_articles[next_index] %}{% endunless %}
+      {% endif %}
+    {% endfor %}
+    <nav class="article-navigation" aria-label="同主题文章">
+      <a class="topic-back" href="{{ '/topics/' | relative_url }}">查看主题阅读路线 →</a>
+      <div class="article-navigation-links">
+        {% if previous_article %}<a href="{{ previous_article.url | relative_url }}"><span>上一篇</span>{{ previous_article.title | escape }}</a>{% endif %}
+        {% if next_article %}<a href="{{ next_article.url | relative_url }}"><span>下一篇</span>{{ next_article.title | escape }}</a>{% endif %}
+      </div>
+    </nav>
+  {% endif %}
 </article>
