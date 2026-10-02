@@ -8,6 +8,10 @@ permalink: /search/
 <input class="search-input" id="search-input" type="search" autocomplete="off" placeholder="输入关键词…">
 <p class="search-count" id="search-count"></p>
 <ul class="archive-list" id="search-results">
+{% assign aoi_articles = site.pages | where: 'topic', 'aoi-series' | sort: 'topic_order' %}
+{% for article in aoi_articles %}
+  <li data-search="{{ article.title | append: ' ' | append: article.description | escape }}"><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{{ article.category }}</small></li>
+{% endfor %}
 {% assign articles = site.pages | where: 'layout', 'article' | sort: 'weight' %}
 {% for article in articles %}
   <li data-search="{{ article.title | append: ' ' | append: article.description | escape }}"><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a><small>{{ article.category }}</small></li>

@@ -1,0 +1,523 @@
+---
+layout: null
+title: "AOI 进阶｜四种方案与人群热点的成本工程"
+description: "比较固定网格、十字链表、四叉树和 Tower 订阅，并推演热点优化。"
+category: 游戏开发
+topic: aoi-series
+topic_order: 2
+published_at: "2026-10-02T12:27:04+08:00"
+updated_at: "2026-10-02T12:27:04+08:00"
+---
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AOI 进阶篇：固定网格、十字链表、四叉树、Tower 订阅的成本比较，以及防抖、分频、压缩和热点降级。">
+  <title>AOI 进阶｜四种方案与人群热点的成本工程</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f3ec;
+      --surface: #fffefa;
+      --surface-alt: #eaf2ef;
+      --ink: #172d33;
+      --muted: #50646a;
+      --line: #cbd8d2;
+      --teal: #176e73;
+      --teal-dark: #10545a;
+      --teal-pale: #cce6e2;
+      --amber: #f3dcaa;
+      --orange: #bd5b36;
+      --orange-pale: #fae6dc;
+      --navy: #17343d;
+      --shadow: 0 20px 55px rgba(15, 48, 48, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.75 "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: var(--teal-dark); text-underline-offset: .2em; }
+    a:hover { color: var(--orange); }
+    :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+    .skip-link { position: absolute; left: 1rem; top: -5rem; z-index: 20; padding: .55rem .8rem; background: var(--ink); color: white; }
+    .skip-link:focus { top: 1rem; }
+    .shell { width: min(1120px, calc(100% - 36px)); margin-inline: auto; }
+    .topbar { border-bottom: 1px solid var(--line); background: rgba(246, 243, 236, .96); }
+    .topbar .shell { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 72px; }
+    .brand { color: var(--ink); font-weight: 800; letter-spacing: .04em; text-decoration: none; }
+    .brand span { color: var(--orange); }
+    .nav { display: flex; flex-wrap: wrap; gap: .25rem 1.1rem; }
+    .nav a { color: var(--muted); font-size: .88rem; text-decoration: none; }
+    .nav a:hover { color: var(--teal-dark); text-decoration: underline; }
+    .eyebrow, .chapter-number { color: var(--orange); font-size: .78rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin: .7rem 0 1.1rem; font-size: clamp(2.4rem, 5vw, 4.75rem); letter-spacing: -.055em; line-height: 1.15; }
+    h1 em { color: #92d4ca; font-style: normal; }
+    h2 { margin: .5rem 0 .85rem; font-size: clamp(1.8rem, 3.4vw, 2.7rem); letter-spacing: -.04em; line-height: 1.25; }
+    h3 { margin: 0 0 .55rem; font-size: 1.2rem; line-height: 1.35; }
+    .hero { overflow: hidden; background: radial-gradient(circle at 88% 19%, rgba(118, 186, 181, .28), transparent 30%), linear-gradient(135deg, #112c34 0%, #21444a 100%); color: white; }
+    .hero .shell { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(270px, .75fr); gap: clamp(1.5rem, 5vw, 5rem); align-items: center; padding-block: clamp(4.5rem, 9vw, 7rem); }
+    .hero .eyebrow { color: #f0b992; }
+    .hero-lead { max-width: 39em; color: #d7e7e4; font-size: clamp(1.04rem, 1.5vw, 1.2rem); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.8rem; }
+    .hero-actions a { display: inline-block; padding: .5rem .88rem; border: 1px solid #7fa5a4; border-radius: 8px; color: white; font-size: .87rem; font-weight: 700; text-decoration: none; }
+    .hero-actions a:first-child { border-color: #a8d8d1; background: #a8d8d1; color: #153238; }
+    .hero-actions a:hover { background: rgba(255,255,255,.15); }
+    .hero-rule { padding: clamp(1.35rem, 3vw, 2rem); border: 1px solid rgba(212, 240, 232, .42); border-radius: 17px; background: rgba(255,255,255,.08); }
+    .hero-rule > span { color: #d7e7e4; font-size: .82rem; font-weight: 700; }
+    .hero-rule strong { display: block; margin: .45rem 0 .15rem; color: #fff; font: 800 clamp(1.5rem, 3vw, 2.55rem)/1.2 Consolas, monospace; }
+    .hero-rule p { margin: 0; color: #d7e7e4; font-size: .86rem; }
+    .hero-rule hr { margin: 1rem 0; border: 0; border-top: 1px solid rgba(212,240,232,.35); }
+    .chapter { padding: clamp(3.8rem, 7vw, 6.2rem) 0; border-top: 1px solid var(--line); }
+    .section-heading { max-width: 810px; margin-bottom: 2rem; }
+    .section-heading > p { color: var(--muted); font-size: 1.05rem; }
+    .concept-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .concept { padding: 1.3rem; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .concept .symbol { display: block; margin-bottom: .35rem; color: var(--teal-dark); font: 800 1.75rem/1 Consolas, monospace; }
+    .concept h3 { font-size: 1rem; }
+    .concept p { margin: 0; color: var(--muted); font-size: .89rem; }
+    .equation { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: .75rem; align-items: center; margin-top: 1.4rem; padding: 1.1rem 1.25rem; border-radius: 12px; background: var(--surface-alt); }
+    .equation .part { text-align: center; }
+    .equation strong { display: block; color: var(--teal-dark); font: 800 1.15rem Consolas, monospace; }
+    .equation span { color: var(--muted); font-size: .78rem; }
+    .equation b { color: var(--orange); font-size: 1.4rem; }
+    .notice { margin: 1.35rem 0 0; padding: .95rem 1.15rem; border-left: 4px solid var(--orange); background: var(--orange-pale); color: #70402e; font-size: .92rem; }
+    .notice strong { color: #633421; }
+    .diagram-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; margin-bottom: 1.7rem; }
+    .diagram-strip div { padding: .55rem .7rem; border-radius: 7px; background: var(--surface-alt); color: var(--teal-dark); text-align: center; font-size: .84rem; font-weight: 750; }
+    .scheme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem; }
+    .scheme { padding: clamp(1.2rem, 2.6vw, 1.7rem); border: 1px solid var(--line); border-radius: 17px; background: var(--surface); box-shadow: var(--shadow); }
+    .scheme-head { display: flex; align-items: baseline; gap: .65rem; margin-bottom: .75rem; }
+    .scheme-head span { color: var(--orange); font: 800 .8rem Consolas, monospace; }
+    .scheme-head h3 { margin: 0; }
+    .scheme p { color: var(--muted); font-size: .91rem; }
+    .scheme .diagram { display: grid; place-items: center; min-height: 125px; margin: 1rem 0; border-radius: 10px; background: var(--surface-alt); }
+    .diagram svg { display: block; width: min(100%, 250px); height: 112px; }
+    .facts { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: .4rem .6rem; margin: .8rem 0 0; font-size: .86rem; }
+    .facts dt { color: var(--teal-dark); font-weight: 800; }
+    .facts dd { margin: 0; color: var(--muted); }
+    .hotspot { margin-top: 1rem; padding: .65rem .8rem; border-radius: 8px; background: #f8eee7; color: #75452d; font-size: .85rem; }
+    .hotspot b { color: #633421; }
+    .legend-text { margin: 1.3rem 0 0; color: var(--muted); font-size: .86rem; }
+    code { font-family: Consolas, "SFMono-Regular", monospace; }
+    .table-wrap { overflow-x: auto; margin-top: 2rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .8rem .65rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: .87rem; }
+    th { color: var(--muted); font-size: .79rem; white-space: nowrap; }
+    td:first-child { font-weight: 750; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .lab { padding: clamp(1.2rem, 3vw, 2rem); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+    .lab-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .6rem 1rem; margin-bottom: 1.2rem; }
+    .lab-head h3 { margin: 0; }
+    .lab-head p { margin: .2rem 0 0; color: var(--muted); font-size: .85rem; }
+    .badge { display: inline-block; padding: .2rem .55rem; border-radius: 5px; background: var(--orange-pale); color: #783f28; font-size: .78rem; font-weight: 800; }
+    .lab-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem 1.5rem; }
+    .lab-controls label { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; margin-bottom: .3rem; font-size: .89rem; font-weight: 750; }
+    .lab-controls output { color: var(--teal-dark); font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: var(--teal); }
+    select { width: 100%; min-height: 42px; padding: .35rem .45rem; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); }
+    .groups { display: flex; gap: .35rem; align-items: flex-end; min-height: 99px; margin: 1.4rem 0; padding: .7rem .35rem 0; border-bottom: 1px solid var(--line); }
+    .group { display: grid; place-items: end center; flex: 1; min-width: 0; height: var(--h); padding-bottom: .12rem; border-radius: 6px 6px 0 0; background: var(--teal); color: white; font: 800 .78rem Consolas, monospace; }
+    .group:first-child { background: var(--orange); }
+    .lab-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--line); }
+    .lab-metric { padding: .95rem 1rem; background: var(--surface); }
+    .lab-metric small { display: block; color: var(--muted); font-size: .78rem; }
+    .lab-metric strong { display: block; margin: .18rem 0; color: var(--teal-dark); font-size: clamp(1.35rem, 2.5vw, 2rem); line-height: 1.22; font-variant-numeric: tabular-nums; }
+    .lab-metric span { color: var(--muted); font-size: .77rem; }
+    .dual-bars { margin-top: 1.4rem; }
+    .bar-line { display: grid; grid-template-columns: 115px minmax(0, 1fr) 95px; gap: .65rem; align-items: center; margin: .6rem 0; font-size: .84rem; }
+    .bar-line strong { text-align: right; font-variant-numeric: tabular-nums; }
+    .bar-track { height: 15px; overflow: hidden; border-radius: 999px; background: #e6ece7; }
+    .bar-fill { height: 100%; border-radius: inherit; background: var(--orange); transition: width .2s; }
+    .bar-fill.network { background: var(--teal); }
+    .fine-print { margin: .9rem 0 0; color: var(--muted); font-size: .85rem; }
+    .lever-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .lever { padding: 1.4rem; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .lever small { color: var(--orange); font-weight: 800; letter-spacing: .08em; }
+    .lever h3 { margin-top: .5rem; }
+    .lever .number { display: block; margin: .8rem 0 .4rem; color: var(--teal-dark); font: 800 clamp(1.65rem, 2.6vw, 2.1rem)/1.15 Consolas, monospace; }
+    .lever p { margin-bottom: 0; color: var(--muted); font-size: .87rem; }
+    .lever .mini-track { height: 9px; margin: .85rem 0; border-radius: 999px; background: #e6ece7; }
+    .lever .mini-fill { height: 100%; border-radius: inherit; background: var(--teal); }
+    .lever:first-child .mini-fill { background: var(--orange); }
+    .hysteresis { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .9fr); gap: 1.5rem; padding: clamp(1.25rem, 3vw, 2rem); border: 1px solid var(--line); border-radius: 17px; background: var(--surface); }
+    .hysteresis h3 { margin-bottom: .4rem; }
+    .hysteresis p { color: var(--muted); font-size: .89rem; }
+    .hysteresis label { display: flex; justify-content: space-between; gap: .5rem; margin: 1rem 0 .25rem; font-size: .88rem; font-weight: 750; }
+    .hysteresis output { color: var(--teal-dark); font-variant-numeric: tabular-nums; }
+    .range-track { position: relative; display: flex; height: 18px; margin: 1.2rem 0 .3rem; overflow: visible; border-radius: 999px; background: #e6ece7; }
+    .range-in { width: 43%; border-radius: 999px 0 0 999px; background: var(--teal-pale); }
+    .range-hold { width: 14%; background: var(--amber); }
+    .range-out { flex: 1; border-radius: 0 999px 999px 0; }
+    .range-marker { position: absolute; top: -5px; left: var(--marker); width: 3px; height: 28px; border-radius: 2px; background: var(--orange); }
+    .range-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: .77rem; }
+    .state-box { align-self: center; padding: 1.25rem; border-left: 4px solid var(--teal); background: var(--surface-alt); }
+    .state-box.out { border-left-color: var(--orange); background: var(--orange-pale); }
+    .state-box strong { display: block; color: var(--teal-dark); font-size: 1.3rem; }
+    .state-box.out strong { color: #8a462d; }
+    .state-box p { margin: .2rem 0 0; }
+    .status { display: inline-block; padding: .12rem .48rem; border-radius: 5px; background: var(--teal-pale); color: var(--teal-dark); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+    .status.future { background: var(--amber); color: #735321; }
+    .status.external { background: var(--orange-pale); color: #783f28; }
+    .sources { padding: 1.4rem 0 4.2rem; border-top: 1px solid var(--line); }
+    .sources p, .sources li { color: var(--muted); font-size: .87rem; }
+    .sources li { margin: .42rem 0; overflow-wrap: anywhere; }
+    .sources details { padding: .6rem 0; }
+    .sources summary { cursor: pointer; font-weight: 750; }
+    .footer { padding: 1.3rem 0 2.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
+    .footer .shell { display: flex; justify-content: space-between; gap: .5rem 1.2rem; flex-wrap: wrap; }
+    @media (max-width: 830px) {
+      .hero .shell, .hysteresis { grid-template-columns: 1fr; }
+      .hero-rule { max-width: 600px; }
+      .concept-grid { grid-template-columns: repeat(2, 1fr); }
+      .scheme-grid, .lever-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .topbar .shell { align-items: flex-start; flex-direction: column; justify-content: center; padding: .8rem 0; }
+      .nav { gap: .2rem .8rem; }
+      .concept-grid { grid-template-columns: 1fr; }
+      .equation { grid-template-columns: 1fr; }
+      .equation b { transform: rotate(90deg); line-height: 1; }
+      .diagram-strip { grid-template-columns: repeat(2, 1fr); }
+      .lab-controls, .lab-metrics { grid-template-columns: 1fr; }
+      .bar-line { grid-template-columns: 1fr 80px; gap: .2rem .5rem; }
+      .bar-line span:first-child { grid-column: 1 / -1; }
+      .group { font-size: .7rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .bar-fill { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="./11-aoi-intro.html">AOI <span>/</span> 02 进阶</a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="/topics/#aoi-series">博客专题</a><a href="./11-aoi-intro.html">← 入门篇</a>
+        <a href="#schemes">四种方案</a>
+        <a href="#hotspot">热点实验</a>
+        <a href="#hysteresis">防抖</a>
+        <a href="#degrade">降级策略</a>
+        <a href="./13-aoi-traffic-and-overload.html">篇章 3 →</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <aside style="max-width:1120px;margin:1.25rem auto;padding:1rem 1.25rem;background:#fff3dc;border-left:4px solid #bd5b36;line-height:1.65">发布于 2026-10-02 · 公开版教学示例：人物数量、频率、包长、阈值与计算结果均为可调假设，不对应任何实际项目配置或压测结果。</aside><section class="hero" aria-labelledby="hero-title">
+      <div class="shell">
+        <div>
+          <div class="eyebrow">篇章 02 / AOI 进阶</div>
+          <h1 id="hero-title">换掉九宫格，<em>世界 Boss 就不卡了吗？</em></h1>
+          <p class="hero-lead">AOI 不只是一种空间索引。固定网格、十字链表、四叉树和 Tower 各自优化的是“找候选”或“维护订阅”；真正的人群热点还要算消息扇出、包长、发送频率和帧预算。</p>
+          <div class="hero-actions"><a href="#schemes">比较四种方案</a><a href="./11-aoi-intro.html">回到篇章 1</a></div>
+        </div>
+        <aside class="hero-rule" aria-label="索引与广播的成本区别">
+          <span>空间索引回答</span><strong>谁可能相关？</strong><p>减少无关位置的查询。</p>
+          <hr>
+          <span>广播预算回答</span><strong>给谁发多少？</strong><p>控制收件人、频率和每条字节。</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="chapter" id="model" aria-labelledby="model-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">01 / 成本拆解</div>
+          <h2 id="model-title">先把四笔账拆开</h2>
+          <p>同样是“500 人同屏”，查候选、进出视野、实际发包和单包大小可能由不同机制决定。换索引只能直接影响其中一部分。</p>
+        </div>
+        <div class="concept-grid">
+          <article class="concept"><span class="symbol">C</span><h3>候选扫描</h3><p>一次事件要检查多少附近对象？热点单格可能接近 N。</p></article>
+          <article class="concept"><span class="symbol">Δ</span><h3>进出变更</h3><p>移动后有多少候选关系和客户端对象需要创建或撤销？</p></article>
+          <article class="concept"><span class="symbol">E</span><h3>实际扇出</h3><p>已选择的有向“发送者 → 接收者”关系有多少？</p></article>
+          <article class="concept"><span class="symbol">S</span><h3>每条字节</h3><p>状态字段、封包与编码后，一条消息有多大？</p></article>
+        </div>
+        <div class="equation" aria-label="移动出口计算式">
+          <div class="part"><strong>每秒状态事件</strong><span>玩家数 N × 频率 q</span></div><b>×</b>
+          <div class="part"><strong>平均收件人数</strong><span>最多 min(K, N−1)</span></div><b>×</b>
+          <div class="part"><strong>每条字节 S</strong><span>再乘 8 得 bit/s</span></div>
+        </div>
+        <p class="notice"><strong>本文用一个假设系统比较 AOI 成本：固定网格取九宫格候选，每位观察者至多选 K 人，逐个检查候选并决定发送。所有数字只用于建模。</strong></p>
+      </div>
+    </section>
+
+    <section class="chapter" id="schemes" aria-labelledby="schemes-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">02 / 方案比较</div>
+          <h2 id="schemes-title">四种常见思路，解决不同层的问题</h2>
+          <p>“九宫格”是固定网格上的邻域规则；Tower 是网格加观察者订阅集合。十字链表与四叉树改变找候选的方法。它们都不会自动取消真实接收者的网络字节。</p>
+        </div>
+        <div class="diagram-strip" aria-label="AOI 处理层次"><div>位置 → 空间索引</div><div>候选 → 订阅与排序</div><div>选中 → 发送调度</div><div>消息 → 编码与出口</div></div>
+        <div class="scheme-grid">
+          <article class="scheme">
+            <div class="scheme-head"><span>方案 01</span><h3>固定网格 / 九宫格</h3></div>
+            <p>坐标直接映射格号；从角色所在格取周围 3×3。地图规则、AOI 半径较固定时，实现和缓存都简单。固定网格是这种场景的可选实现。</p>
+            <div class="diagram">
+              <svg viewbox="0 0 190 112" role="img" aria-label="五乘五网格中，高亮中心九宫格与中央玩家">
+                <rect x="25" y="6" width="140" height="100" rx="4" fill="#edf3ef"></rect>
+                <path d="M53 6v100 M81 6v100 M109 6v100 M137 6v100 M25 26h140 M25 46h140 M25 66h140 M25 86h140" stroke="#bdcec9" stroke-width="1"></path>
+                <rect x="54" y="27" width="82" height="58" rx="3" fill="#cce6e2"></rect>
+                <circle cx="95" cy="56" r="8" fill="#176e73"></circle>
+                <circle cx="95" cy="56" r="2.5" fill="#fff"></circle>
+              </svg>
+            </div>
+            <dl class="facts"><dt>移动</dt><dd>格内无需改变格归属；跨格处理新旧邻域差集中的对象。</dd><dt>内存</dt><dd>格子 O(G)，若保存每对候选关系再加 O(E)。</dd><dt>代价</dt><dd>格号查询 O(1)；跨格通知量取决于变化格内的人数。</dd></dl>
+            <div class="hotspot"><b>扎堆：</b>同一格人数趋近 N 时，一次广播仍可能扫 N 人。</div>
+          </article>
+
+          <article class="scheme">
+            <div class="scheme-head"><span>方案 02</span><h3>十字链表 / 双轴有序表</h3></div>
+            <p>分别按 X、Y 排序实体，移动时维护两条顺序链。小位移只越过少量邻居时，可借越位检测视野边界事件。</p>
+            <div class="diagram">
+              <svg viewbox="0 0 190 112" role="img" aria-label="X 与 Y 两条排序轴上各有实体，中心玩家同时属于两轴">
+                <path d="M20 33h150 M93 13v89" stroke="#789b99" stroke-width="2"></path>
+                <circle cx="42" cy="33" r="6" fill="#c68b65"></circle><circle cx="70" cy="33" r="6" fill="#c68b65"></circle><circle cx="93" cy="33" r="8" fill="#176e73"></circle><circle cx="129" cy="33" r="6" fill="#c68b65"></circle><circle cx="155" cy="33" r="6" fill="#c68b65"></circle>
+                <circle cx="93" cy="66" r="6" fill="#c68b65"></circle><circle cx="93" cy="88" r="6" fill="#c68b65"></circle>
+                <text x="165" y="37" fill="#50646a" font-size="13">X</text><text x="99" y="103" fill="#50646a" font-size="13">Y</text>
+              </svg>
+            </div>
+            <dl class="facts"><dt>进出/移动</dt><dd>新实体若从链表头定位需 O(N)；小位移随越过节点数 s 增长，大跳跃可退化到 O(N)。</dd><dt>内存</dt><dd>两轴节点 O(N)，若保存可见对再加 O(E)。</dd><dt>代价</dt><dd>连续小位移有利；范围查询仍要从轴区间筛另一维。</dd></dl>
+            <div class="hotspot"><b>扎堆：</b>同坐标附近大量互相越位或传送时，维护和通知都可能接近 O(N)。</div>
+          </article>
+
+          <article class="scheme">
+            <div class="scheme-head"><span>方案 03</span><h3>四叉树</h3></div>
+            <p>按密度递归切分空间，空旷区域用大块，热区用更细的块；适合密度变化大、查询范围不一致的地图。</p>
+            <div class="diagram">
+              <svg viewbox="0 0 190 112" role="img" aria-label="矩形先分四块，右下密集区域继续细分">
+                <rect x="28" y="8" width="134" height="96" fill="#edf3ef" stroke="#789b99"></rect>
+                <path d="M95 8v96 M28 56h134 M128 56v48 M95 80h67 M111 56v24 M95 68h33" stroke="#789b99" fill="none"></path>
+                <circle cx="111" cy="68" r="3" fill="#bd5b36"></circle><circle cx="141" cy="68" r="3" fill="#bd5b36"></circle><circle cx="145" cy="91" r="3" fill="#bd5b36"></circle><circle cx="105" cy="91" r="3" fill="#bd5b36"></circle>
+              </svg>
+            </div>
+            <dl class="facts"><dt>移动</dt><dd>删旧叶、插新叶，必要时分裂或合并；取决于树高 h。</dd><dt>内存</dt><dd>实体 O(N)、树节点 O(T)，可见对另计。</dd><dt>代价</dt><dd>范围查询 O(v+C)：访问 v 个树节点并检查 C 个叶内实体。</dd></dl>
+            <div class="hotspot"><b>扎堆：</b>所有人落进同一深叶时，叶内查询仍可能检查 N 人。</div>
+          </article>
+
+          <article class="scheme">
+            <div class="scheme-head"><span>方案 04</span><h3>Tower / 格子订阅集合</h3></div>
+            <p>每格保存实体与“正在观察此格的人”。观察者移动时只改新旧覆盖格的订阅；实体广播时可先取所在格的订阅者。</p>
+            <div class="diagram">
+              <svg viewbox="0 0 190 112" role="img" aria-label="九个塔格，每格关联观察者集合，中央塔向订阅者发消息">
+                <rect x="38" y="8" width="114" height="96" fill="#edf3ef" stroke="#789b99"></rect>
+                <path d="M76 8v96 M114 8v96 M38 40h114 M38 72h114" stroke="#bdcec9"></path>
+                <rect x="78" y="42" width="34" height="28" rx="3" fill="#cce6e2"></rect>
+                <circle cx="95" cy="56" r="6" fill="#176e73"></circle>
+                <path d="M95 56L57 23 M95 56L133 23 M95 56L133 88" stroke="#bd5b36" stroke-width="2"></path>
+                <circle cx="57" cy="23" r="4" fill="#bd5b36"></circle><circle cx="133" cy="23" r="4" fill="#bd5b36"></circle><circle cx="133" cy="88" r="4" fill="#bd5b36"></circle>
+              </svg>
+            </div>
+            <dl class="facts"><dt>移动</dt><dd>更新覆盖格订阅差集；维护成本随改变的格数和订阅操作增长。</dd><dt>内存</dt><dd>塔 O(G)、观察者订阅约 O(Nd)；人级已选边另计。</dd><dt>代价</dt><dd>广播可直接迭代塔的订阅集合，省去无关格扫描。</dd></dl>
+            <div class="hotspot"><b>扎堆：</b>一个塔有 N 名订阅者时仍需人级裁剪；只有 Tower 不会自动变成 O(NK)。</div>
+          </article>
+        </div>
+        <p class="legend-text"><strong>记号：</strong>G=格子数，N=实体数，E=显式保存的有向可见关系数，C=一次查询实际候选数，T=树节点数，h=树高，v=查询访问的树节点数，d=每名观察者订阅的格数，s=移动越过的排序节点数。上表描述实现模型，复杂度依赖数据分布；不是任何实际系统的实测排名。</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">关心的问题</th><th scope="col">网格</th><th scope="col">十字链表</th><th scope="col">四叉树</th><th scope="col">Tower 订阅</th></tr></thead>
+            <tbody>
+              <tr><td>定位/维护</td><td>格号 O(1)；跨格扫差集</td><td>小位移按越位数 s 调整</td><td>按树高 h 插删，可能分合</td><td>按覆盖格差集改订阅</td></tr>
+              <tr><td>额外空间</td><td>O(G)＋关系表（若有）</td><td>O(N)＋关系表（若有）</td><td>O(N+T)＋关系表（若有）</td><td>O(G+Nd)＋人级关系（若有）</td></tr>
+              <tr><td>高密度单点</td><td>热格扫描大</td><td>排序越位与邻域通知大</td><td>深叶内仍需扫描</td><td>热塔订阅者集合大</td></tr>
+              <tr><td>典型价值</td><td>规则地图、范围稳定</td><td>连续小位移、事件驱动边界</td><td>密度不均、范围多样</td><td>按格订阅、复用广播收件集合</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="hotspot" aria-labelledby="hotspot-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">03 / 热点实验台</div>
+          <h2 id="hotspot-title">把人分散后，哪条曲线先降？</h2>
+          <p>把总人数平均放进互相隔离的 AOI 组：可以理解为不同实例，或相距足够远、视野互不重叠的区域；每组内部假定都聚在同一候选格。这里固定人人每秒移动 5 次、每条逻辑包 80 B，只比较模型量级。</p>
+        </div>
+        <div class="lab">
+          <div class="lab-head"><div><h3>聚集度与扇出</h3><p>拖动参数，观察候选扫描和移动出口是否一起变化。</p></div><span class="badge" id="labCaveat">500 人单实例为教学假设</span></div>
+          <div class="lab-controls">
+            <div><label for="labPeople">总人数 N <output id="labPeopleOut" for="labPeople">500</output></label><input id="labPeople" type="range" min="100" max="500" step="1" value="500"></div>
+            <div><label for="labGroups">互不相见的 AOI 组 m <output id="labGroupsOut" for="labGroups">1</output></label><input id="labGroups" type="range" min="1" max="8" step="1" value="1"></div>
+            <div><label for="labK">每人同步其他玩家上限 K</label><select id="labK"><option value="20">20 人</option><option value="50" selected>50 人</option></select></div>
+          </div>
+          <div class="groups" id="groupsGraphic" role="img" aria-label="一个 AOI 组，500 人"></div>
+          <div class="lab-metrics" aria-live="polite">
+            <div class="lab-metric"><small>候选检查 / 秒</small><strong id="labScan">125.00 万</strong><span>5 × Σ nᵢ²</span></div>
+            <div class="lab-metric"><small>实际移动发送 / 秒</small><strong id="labSend">12.50 万</strong><span>5 × Σ nᵢ·min(K,nᵢ−1)</span></div>
+            <div class="lab-metric"><small>移动逻辑出口</small><strong id="labBand">80.00 Mb/s</strong><span>发送条数 × 80 B × 8</span></div>
+          </div>
+          <div class="dual-bars">
+            <div class="bar-line"><span>候选扫描占单组比例</span><div class="bar-track"><div class="bar-fill" id="scanBar" style="width:100%"></div></div><strong id="scanRatio">100%</strong></div>
+            <div class="bar-line"><span>移动出口占单组比例</span><div class="bar-track"><div class="bar-fill network" id="bandBar" style="width:100%"></div></div><strong id="bandRatio">100%</strong></div>
+          </div>
+          <p class="fine-print" id="labExplanation">500 人全挤在同一组，候选扫描约 125 万次/秒；K=50 时真正发送约 12.5 万条/秒。</p>
+          <p class="fine-print">扫描式子刻画“人人挤在同一候选区”的逐人遍历量，不等于 CPU 时间；实际还取决于格内分布、技能/NPC 和代码实现。逻辑出口也不是 TCP/IP 线上字节。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="broadcast" aria-labelledby="broadcast-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">04 / 广播成本</div>
+          <h2 id="broadcast-title">同一个 500 人例子，分别拧三种旋钮</h2>
+          <p>下列三个数字均按 N=500、K=50 的假设计算。包长和频率可调整，不代表实际协议。</p></div>
+        <div class="lever-grid">
+          <article class="lever"><small>基线 / 假设协议</small><h3>50 人都收 5 Hz</h3><span class="number">80.00 Mb/s</span><div class="mini-track"><div class="mini-fill" style="width:100%"></div></div><p><code>500 × 50 × 5 × 80 B × 8</code>。80 B 是构造包假设，500 人单实例是教学假设。</p></article>
+          <article class="lever"><small>改造方向 / 近远分频</small><h3>近 10 人 5 Hz，远 40 人 1 Hz</h3><span class="number">28.80 Mb/s</span><div class="mini-track"><div class="mini-fill" style="width:36%"></div></div><p><code>500 × (10×5+40×1) × 80 B × 8</code>。要先按接收者距离分级，并验证插值与纠偏体验。</p></article>
+          <article class="lever"><small>改造方向 / 更紧的编码</small><h3>分频后把示例包压到 32 B</h3><span class="number">11.52 Mb/s</span><div class="mini-track"><div class="mini-fill" style="width:14.4%"></div></div><p><code>500 × 90 × 32 B × 8</code>。相对坐标、定点数、朝向量化都要定义精度、基线和丢包修复。</p></article>
+        </div>
+        <p>如果建立反向订阅索引，发送时可遍历已选接收者；这样用额外索引维护和内存换取较少的候选扫描，出口字节仍需单独优化。</p></div>
+    </section>
+
+    <section class="chapter" id="hysteresis" aria-labelledby="hysteresis-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">05 / 视野防抖</div>
+          <h2 id="hysteresis-title">进入和离开用同一条线，会发生什么？</h2>
+          <p>角色在边界附近来回移动时，进入、离开、再次进入会连续产生对象快照和撤销。迟滞让两个阈值之间保留上一次状态。</p>
+        </div>
+        <div class="hysteresis">
+          <div>
+            <h3>先拖到 33 m，再退回 31 m，最后到 29 m</h3>
+            <p>进入距离设为 30 m、离开距离设为 32 m，仅为迟滞机制的教学数字。</p><label for="distance">当前距离 <output id="distanceOut" for="distance">28.0 m</output></label>
+            <input id="distance" type="range" min="24" max="38" step="0.5" value="28">
+            <div class="range-track" aria-hidden="true"><div class="range-in"></div><div class="range-hold"></div><div class="range-out"></div><div class="range-marker" id="rangeMarker" style="--marker:28.57%"></div></div>
+            <div class="range-labels"><span>24 m</span><span>进入线 30 m</span><span>离开线 32 m</span><span>38 m</span></div>
+          </div>
+          <div class="state-box" id="stateBox" role="status" aria-live="polite"><strong id="stateTitle">保持可见</strong><p id="stateDetail">距离未超过离开阈值 32 m。</p></div>
+        </div>
+        <p>如果要在空间边界加入迟滞，候选检索范围必须覆盖较大的离开阈值，同时评估进出视野事件数。</p></div>
+    </section>
+
+    <section class="chapter" id="degrade" aria-labelledby="degrade-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">06 / 热点降级</div>
+          <h2 id="degrade-title">世界 Boss 的降级顺序，应按指标触发</h2>
+          <p>先识别瓶颈在候选扫描、进出抖动、战斗消息还是出口队列，再用影响最小的手段。单纯看“在线人数”会错过真正的热点。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">层级</th><th scope="col">手段</th><th scope="col">主要减什么</th><th scope="col">代价和适用情况</th></tr></thead>
+            <tbody>
+              <tr><td>先量测</td><td>每实例按秒统计协议字节、候选/已选扇出、进出事件、帧 p99、发送队列</td><td>定位真正占大头的协议与阶段</td><td><span class="status future">建议采集</span> 按实例和短时间窗口观察热点。</td></tr>
+              <tr><td>优先级</td><td>队友、交战对象、近处目标先占同步名额</td><td>减少低价值发送关系</td><td><span class="status future">设计选择</span> 优先级和人数上限需按场景验证。</td></tr>
+              <tr><td>更新调度</td><td>近处高频，远处低频；同一收件者合并旧移动状态</td><td>发送条数与队列积压</td><td><span class="status future">改造方向</span> 远处表现更依赖插值，关键状态不能延后。</td></tr>
+              <tr><td>编码与空间</td><td>增量/量化、动态半径、分线或隔离实例</td><td>每条字节或每组候选人数</td><td><span class="status future">设计选择</span> 分线、增量编码和动态半径都需单独评估。</td></tr>
+              <tr><td>最后兜底</td><td>像 EVE 那样按过载程度降低游戏时间流速</td><td>单位真实时间内的模拟工作</td><td><span class="status external">外部案例</span> 会改变战斗节奏与计时语义。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="notice"><strong>时间膨胀不是网络压缩。</strong>CCP 对 EVE 的说明是：过载时放慢与游戏时钟相关的操作，让任务队列保持可处理；一些与现实时间绑定的计时器还需区别对待。它并不让固定数量玩家的每次事件凭空变小。参见 <a href="https://www.eveonline.com/news/view/introducing-time-dilation-tidi">CCP 设计说明</a>和<a href="https://www.eveonline.com/news/view/time-dilation-hows-that-going">上线后的观察</a>。</p>
+      </div>
+    </section>
+
+    <section class="chapter" id="choose" aria-labelledby="choose-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">07 / 选型方法</div>
+          <h2 id="choose-title">先压测场景分布，再决定换不换索引</h2>
+          <p>均匀、规则地图通常先把网格做扎实；高度不均且 AOI 半径多样时，可评估四叉树；小幅连续移动且边界事件多时，可评估有序轴；需要按格复用收件集合时，可评估 Tower。它们都要和人级 K、频率分层、协议编码一起测。</p>
+        </div>
+        <div class="diagram-strip" aria-label="四种必须覆盖的压测"><div>空旷地图移动</div><div>主城密集静止与移动</div><div>世界 Boss 全技能</div><div>边界往返与传送</div></div>
+        <p class="notice"><strong>验收条件：</strong>对每种分布记录同一个 服务器进程 的帧耗时 p95/p99、候选检查、进入/离开次数、同步集合大小、按协议出口字节、发送队列和内存。若 500 人同格时瓶颈仍是已选者发送，单换四叉树或十字链表不会消去约 <code>N×K×q×S</code> 的出口账。</p>
+      </div>
+    </section>
+
+    
+  </main>
+  <footer class="footer"><div class="shell"><span>AOI 进阶 · 模型假设与设计推演已分开标注</span><span><a href="./11-aoi-intro.html">← 篇章 1</a> · <a href="./13-aoi-traffic-and-overload.html">篇章 3：流量与超限 →</a></span></div></footer>
+
+  <script>
+    (() => {
+      "use strict";
+      const people = document.getElementById("labPeople");
+      const groups = document.getElementById("labGroups");
+      const limit = document.getElementById("labK");
+      const groupGraphic = document.getElementById("groupsGraphic");
+      const fixed = value => value.toFixed(2);
+      const count = value => value >= 10000 ? fixed(value / 10000) + " 万" : value.toLocaleString("zh-CN");
+
+      function distribute(n, m) {
+        const base = Math.floor(n / m);
+        const extra = n % m;
+        return Array.from({ length: m }, (_, i) => base + (i < extra ? 1 : 0));
+      }
+
+      function calculate() {
+        const n = Number(people.value);
+        const m = Number(groups.value);
+        const k = Number(limit.value);
+        const parts = distribute(n, m);
+        const q = 5;
+        const s = 80;
+        const scan = q * parts.reduce((sum, part) => sum + part * part, 0);
+        const send = q * parts.reduce((sum, part) => sum + part * Math.min(k, part - 1), 0);
+        const band = send * s * 8 / 1e6;
+        const singleScan = q * n * n;
+        const singleSend = q * n * Math.min(k, n - 1);
+        const singleBand = singleSend * s * 8 / 1e6;
+
+        document.getElementById("labPeopleOut").value = String(n);
+        document.getElementById("labGroupsOut").value = String(m);
+        document.getElementById("labScan").textContent = count(scan);
+        document.getElementById("labSend").textContent = count(send);
+        document.getElementById("labBand").textContent = fixed(band) + " Mb/s";
+        const scanRatio = 100 * scan / singleScan;
+        const bandRatio = 100 * band / singleBand;
+        document.getElementById("scanRatio").textContent = fixed(scanRatio) + "%";
+        document.getElementById("bandRatio").textContent = fixed(bandRatio) + "%";
+        document.getElementById("scanBar").style.width = Math.max(2, scanRatio) + "%";
+        document.getElementById("bandBar").style.width = Math.max(2, bandRatio) + "%";
+        document.getElementById("labCaveat").textContent = n === 500 && m === 1
+          ? "500 人单实例为教学假设"
+          : "互相隔离的 AOI 组示例";
+        document.getElementById("labExplanation").textContent =
+          n + " 人分成 " + m + " 个互不相见的组，每组约 " + Math.floor(n / m) + "～" + Math.ceil(n / m) +
+          " 人；候选扫描比单组少 " + fixed(100 - scanRatio) + "%，移动出口少 " + fixed(100 - bandRatio) + "%。";
+
+        groupGraphic.replaceChildren();
+        const maxGroup = Math.max(...parts);
+        for (let i = 0; i < parts.length; i++) {
+          const bar = document.createElement("div");
+          bar.className = "group";
+          bar.style.setProperty("--h", Math.max(23, 72 * parts[i] / maxGroup) + "px");
+          bar.textContent = String(parts[i]);
+          groupGraphic.appendChild(bar);
+        }
+        groupGraphic.setAttribute("aria-label", "各组人数：" + parts.join("、"));
+      }
+
+      people.addEventListener("input", calculate);
+      groups.addEventListener("input", calculate);
+      limit.addEventListener("change", calculate);
+      calculate();
+
+      const distance = document.getElementById("distance");
+      let visible = true;
+      function updateDistance() {
+        const d = Number(distance.value);
+        if (visible && d > 32) visible = false;
+        else if (!visible && d <= 30) visible = true;
+        document.getElementById("distanceOut").value = d.toFixed(1) + " m";
+        document.getElementById("rangeMarker").style.setProperty("--marker", (100 * (d - 24) / 14) + "%");
+        document.getElementById("stateTitle").textContent = visible ? "保持可见" : "当前不可见";
+        document.getElementById("stateDetail").textContent = visible
+          ? d > 30 ? "已进入过视野，30～32 m 之间继续保持可见。" : "距离在进入阈值 30 m 以内。"
+          : d <= 32 ? "尚未重新进入 30 m 内，继续保持不可见。" : "距离已超过离开阈值 32 m。";
+        document.getElementById("stateBox").classList.toggle("out", !visible);
+      }
+      distance.addEventListener("input", updateDistance);
+      updateDistance();
+    })();
+  </script>
+</body>
+</html>

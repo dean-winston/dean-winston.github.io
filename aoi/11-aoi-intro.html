@@ -1,0 +1,544 @@
+---
+layout: null
+title: "AOI 入门｜从一条移动消息到带宽账"
+description: "用交互图解理解九宫格、兴趣名单、广播成本与分线容量。"
+category: 游戏开发
+topic: aoi-series
+topic_order: 1
+published_at: "2026-10-02T12:27:04+08:00"
+updated_at: "2026-10-02T12:27:04+08:00"
+---
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="面向新手的 MMO AOI 图解：九宫格、同步名单、广播成本、分线与容量估算。">
+  <title>AOI 入门｜从一条移动消息到带宽账</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f6f3ec;
+      --surface: #fffefa;
+      --surface-alt: #eaf2ef;
+      --ink: #172d33;
+      --muted: #50646a;
+      --line: #cbd8d2;
+      --teal: #176e73;
+      --teal-dark: #10545a;
+      --teal-pale: #cce6e2;
+      --amber: #f3dcaa;
+      --orange: #bd5b36;
+      --orange-pale: #fae6dc;
+      --shadow: 0 20px 55px rgba(15, 48, 48, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.75 "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: var(--teal-dark); text-underline-offset: .2em; }
+    a:hover { color: var(--orange); }
+    :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+    .skip-link {
+      position: absolute;
+      left: 1rem;
+      top: -5rem;
+      z-index: 20;
+      padding: .55rem .8rem;
+      background: var(--ink);
+      color: white;
+    }
+    .skip-link:focus { top: 1rem; }
+    .shell { width: min(1120px, calc(100% - 36px)); margin-inline: auto; }
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 243, 236, .96);
+    }
+    .topbar .shell { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 72px; }
+    .brand { color: var(--ink); font-weight: 800; letter-spacing: .04em; text-decoration: none; }
+    .brand span { color: var(--orange); }
+    .nav { display: flex; flex-wrap: wrap; gap: .25rem 1.2rem; }
+    .nav a { color: var(--muted); font-size: .9rem; text-decoration: none; }
+    .nav a:hover { color: var(--teal-dark); text-decoration: underline; }
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+      gap: clamp(1.5rem, 5vw, 5rem);
+      align-items: center;
+      padding: clamp(4rem, 9vw, 7.5rem) 0 clamp(4rem, 7vw, 6rem);
+    }
+    .eyebrow, .chapter-number { color: var(--orange); font-size: .78rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 13em; margin: .7rem 0 1.3rem; font-size: clamp(2.45rem, 5.4vw, 4.9rem); line-height: 1.16; letter-spacing: -.055em; }
+    h1 em { color: var(--teal); font-style: normal; }
+    .lead { max-width: 37em; color: var(--muted); font-size: clamp(1.04rem, 1.5vw, 1.2rem); }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.7rem; }
+    .chip { display: inline-block; padding: .28rem .7rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .81rem; font-weight: 650; }
+    .hero-visual {
+      padding: clamp(1.5rem, 3vw, 2.25rem);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      transform: rotate(2deg);
+    }
+    .hero-visual .caption { color: var(--muted); font-size: .85rem; font-weight: 700; }
+    .hero-visual .math { display: block; margin: .3rem 0; color: var(--orange); font-family: Consolas, "SFMono-Regular", monospace; font-size: clamp(2.15rem, 4vw, 3.6rem); font-weight: 800; line-height: 1.25; }
+    .hero-visual .arrow { display: block; width: fit-content; margin: .6rem 0 .6rem auto; padding: .15rem .55rem; border-radius: 7px; background: var(--teal-pale); color: var(--teal-dark); font-size: .85rem; font-weight: 750; }
+    .hero-visual .math:last-of-type { color: var(--teal-dark); }
+    .hero-visual p { margin: 1rem 0 0; border-top: 1px solid var(--line); padding-top: 1rem; color: var(--muted); font-size: .88rem; line-height: 1.6; }
+    .chapter { padding: clamp(3.6rem, 7vw, 6.1rem) 0; border-top: 1px solid var(--line); }
+    .section-heading { max-width: 800px; margin-bottom: 2rem; }
+    h2 { margin: .5rem 0 .9rem; font-size: clamp(1.8rem, 3.4vw, 2.75rem); letter-spacing: -.045em; line-height: 1.25; }
+    .section-heading > p { color: var(--muted); font-size: 1.05rem; }
+    h3 { margin-bottom: .5rem; font-size: 1.2rem; line-height: 1.35; }
+    .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .flow-step { position: relative; padding: 1.4rem; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .flow-step::before { display: block; margin-bottom: .75rem; color: var(--orange); font: 800 .8rem Consolas, monospace; content: attr(data-step); }
+    .flow-step p { margin-bottom: 0; color: var(--muted); font-size: .93rem; }
+    .flow-step strong { color: var(--teal-dark); }
+    .map-layout { display: grid; grid-template-columns: minmax(285px, 460px) minmax(260px, 1fr); gap: clamp(1.5rem, 5vw, 4rem); align-items: center; }
+    .map-frame { padding: clamp(1rem, 3vw, 1.6rem); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+    .map-frame h3 { margin: 0 0 .15rem; }
+    .map-hint { margin: 0 0 1rem; color: var(--muted); font-size: .85rem; }
+    .map-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .map-cell {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1px solid #dce5df;
+      border-radius: 6px;
+      background: #f1f4ee;
+      color: var(--ink);
+      font-size: .8rem;
+      font-weight: 800;
+      transition: background .18s, transform .18s;
+    }
+    .map-cell:not(:disabled):hover { transform: translateY(-2px); }
+    .map-cell:disabled { cursor: default; opacity: 1; }
+    .map-cell.npc { background: var(--amber); border-color: #e1c47e; }
+    .map-cell.player { background: var(--teal-pale); border-color: #77bbb4; }
+    .map-cell.observer { background: var(--teal-dark); border-color: var(--teal-dark); color: white; }
+    .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin-top: .9rem; color: var(--muted); font-size: .82rem; }
+    .legend span { display: inline-flex; align-items: center; gap: .38rem; }
+    .swatch { width: .82rem; height: .82rem; border-radius: 3px; background: #f1f4ee; }
+    .swatch.player { background: var(--teal-pale); }
+    .swatch.npc { background: var(--amber); }
+    .swatch.observer { background: var(--teal-dark); }
+    .map-copy p { color: var(--muted); }
+    .map-result { margin: 1.2rem 0 0; padding: .95rem 1.1rem; border-left: 4px solid var(--teal); background: var(--surface-alt); color: var(--ink) !important; font-weight: 700; }
+    .subtle-note { margin: 1rem 0 0; color: var(--muted); font-size: .86rem; }
+    .selection { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .selection article { padding: 1.4rem; border-top: 4px solid var(--line); background: var(--surface); border-radius: 0 0 14px 14px; }
+    .selection article:nth-child(2) { border-top-color: var(--amber); }
+    .selection article:nth-child(3) { border-top-color: var(--teal); }
+    .selection .icon { display: block; margin-bottom: .85rem; color: var(--orange); font: 800 1.5rem Consolas, monospace; }
+    .selection p { margin: 0; color: var(--muted); font-size: .93rem; }
+    .selection strong { color: var(--ink); }
+    .callout { display: flex; gap: .85rem; align-items: flex-start; margin-top: 1.35rem; padding: 1rem 1.2rem; border-radius: 12px; background: var(--orange-pale); color: #713c2a; }
+    .callout strong { white-space: nowrap; }
+    .callout p { margin: 0; }
+    .calculator { padding: clamp(1.25rem, 3vw, 2rem); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+    .calc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .calc-top h3 { margin: 0; }
+    .calc-top p { margin: .2rem 0 0; color: var(--muted); font-size: .86rem; }
+    .presets { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .preset { padding: .32rem .68rem; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); font-size: .83rem; }
+    .preset:hover, .preset[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-pale); color: var(--teal-dark); }
+    .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem 1.4rem; margin: 1rem 0 1.5rem; }
+    .control label { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .42rem; font-size: .87rem; font-weight: 700; }
+    .control output { color: var(--teal-dark); font-variant-numeric: tabular-nums; font-weight: 800; }
+    input[type="range"] { width: 100%; accent-color: var(--teal); }
+    select { width: 100%; min-height: 42px; padding: .35rem .45rem; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); }
+    .assumption { margin: 0 0 1.45rem; padding: .65rem .8rem; border-radius: 9px; background: var(--surface-alt); color: var(--muted); font-size: .85rem; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--line); }
+    .metric { padding: 1rem 1.15rem; background: var(--surface); }
+    .metric small { display: block; color: var(--muted); font-size: .79rem; }
+    .metric strong { display: block; margin: .2rem 0; color: var(--teal-dark); font-size: clamp(1.5rem, 2.5vw, 2.25rem); font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .metric span { color: var(--muted); font-size: .8rem; }
+    .bar-chart { margin-top: 1.6rem; }
+    .bar-row { display: grid; grid-template-columns: 145px minmax(0, 1fr) 112px; gap: .7rem; align-items: center; margin: .55rem 0; font-size: .86rem; }
+    .bar-track { height: 16px; overflow: hidden; border-radius: 999px; background: #e6ece7; }
+    .bar-fill { height: 100%; border-radius: inherit; background: var(--orange); transition: width .22s; }
+    .bar-fill.capped { background: var(--teal); }
+    .bar-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+    .formula { margin: 1.2rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .87rem; }
+    .formula code, .inline-code { color: var(--teal-dark); font-family: Consolas, "SFMono-Regular", monospace; font-weight: 700; }
+    .split-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    .split-card { padding: 1.35rem; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .split-card h3 { margin: 0 0 .35rem; }
+    .split-card > p { color: var(--muted); font-size: .9rem; }
+    .people-row { display: flex; gap: 3px; align-items: flex-end; min-height: 74px; margin: 1.3rem 0; }
+    .people-column { display: flex; align-items: flex-end; justify-content: center; min-width: 0; height: 74px; border-radius: 6px 6px 0 0; background: var(--orange); color: white; font: 800 .82rem Consolas, monospace; }
+    .people-column.w120 { width: 23%; background: var(--teal); }
+    .people-column.w20 { width: 8%; min-width: 30px; height: 20px; background: var(--teal); }
+    .people-column.full { width: 100%; }
+    .split-numbers { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; padding-top: .8rem; border-top: 1px solid var(--line); font-size: .88rem; }
+    .split-numbers strong { color: var(--teal-dark); }
+    .compare-table { width: 100%; border-collapse: collapse; }
+    .compare-table th, .compare-table td { padding: .9rem .7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .compare-table th { font-size: .82rem; color: var(--muted); }
+    .compare-table td:first-child { width: 28%; font-weight: 750; }
+    .compare-table td { font-size: .91rem; }
+    .compare-table tr:last-child td { border-bottom: 0; }
+    .status { display: inline-block; padding: .11rem .46rem; border-radius: 5px; background: var(--teal-pale); color: var(--teal-dark); font-size: .76rem; font-weight: 800; white-space: nowrap; }
+    .status.future { background: var(--amber); color: #735321; }
+    .sources { padding: 1.4rem 0 4.5rem; border-top: 1px solid var(--line); }
+    .sources details { padding: .7rem 0; }
+    .sources summary { cursor: pointer; font-weight: 750; }
+    .sources ul { padding-left: 1.2rem; }
+    .sources li { margin: .45rem 0; color: var(--muted); overflow-wrap: anywhere; font-size: .86rem; }
+    .sources code { font: .83rem/1.55 Consolas, "SFMono-Regular", monospace; }
+    .footer { padding: 1.3rem 0 2.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .84rem; }
+
+    @media (max-width: 790px) {
+      .hero, .map-layout, .split-layout { grid-template-columns: 1fr; }
+      .hero { gap: 2rem; }
+      .hero-visual { max-width: 460px; transform: none; }
+      .flow, .selection { grid-template-columns: 1fr; }
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .topbar .shell { align-items: flex-start; flex-direction: column; justify-content: center; padding: .8rem 0; }
+      .nav { gap: .2rem .8rem; }
+      .controls { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 1fr 75px; gap: .2rem .5rem; }
+      .bar-row span:first-child { grid-column: 1 / -1; }
+      .bar-row strong { font-size: .8rem; }
+      .callout { display: block; }
+      .compare-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      .compare-table, .compare-table tbody, .compare-table tr, .compare-table td { display: block; width: 100%; }
+      .compare-table tr { padding: .7rem 0; border-bottom: 1px solid var(--line); }
+      .compare-table tr:last-child { border-bottom: 0; }
+      .compare-table td { padding: .12rem .2rem; border: 0; }
+      .compare-table td:nth-child(2) { margin: .18rem 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .map-cell, .bar-fill { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="#top">AOI <span>/</span> 入门课</a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="/topics/#aoi-series">博客专题</a><a href="#what">它在做什么</a>
+        <a href="#grid">九宫格</a>
+        <a href="#calculator">算一笔账</a>
+        <a href="#capacity">容纳人数</a>
+        <a href="./12-aoi-advanced.html">进阶篇 →</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <aside style="max-width:1120px;margin:1.25rem auto;padding:1rem 1.25rem;background:#fff3dc;border-left:4px solid #bd5b36;line-height:1.65">发布于 2026-10-02 · 公开版教学示例：人物数量、频率、包长、阈值与计算结果均为可调假设，不对应任何实际项目配置或压测结果。</aside><section class="hero shell" id="top" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow">MMO 服务端 · 从模型到成本</div>
+        <h1 id="hero-title">500 人挤在一起，服务器<em>到底忙什么？</em></h1>
+        <p class="lead">AOI（兴趣区域）决定“谁需要收到谁的消息”。这页用假设系统的固定网格、同步名单和移动协议，带你从一条移动消息算到整场景的移动出口。</p>
+        <div class="hero-meta">
+          <span class="chip">适合刚接触 MMO 服务端</span>
+          <span class="chip">约 8 分钟</span>
+          <span class="chip">单线 500 人仅为推演</span>
+          <span class="chip">可离线打开</span>
+        </div>
+      </div>
+      <aside class="hero-visual" aria-label="AOI 成本的核心变化">
+        <span class="caption">所有人互相可见时</span>
+        <span class="math">N × (N−1)</span>
+        <span class="arrow">每人只同步 K 人 ↓</span>
+        <span class="math">N × K</span>
+        <p>同步人数上限减少真正发出的消息；密集区域内的候选扫描仍可能接近 N²。两笔成本要分开看。</p>
+      </aside>
+    </section>
+
+    <section class="chapter" id="what" aria-labelledby="what-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">01 / 一句话理解</div>
+          <h2 id="what-title">AOI 是一份不断变化的“收件人名单”</h2>
+          <p>玩家 A 移动一次，不必通知整张地图。服务端先找到附近的候选者，再决定谁真的能看到 A，最后才把消息交给这些连接。</p>
+        </div>
+        <div class="flow">
+          <article class="flow-step" data-step="STEP 01">
+            <h3>找候选</h3>
+            <p>用<strong>固定大小的网格</strong>快速定位。玩家看九宫格；NPC 候选范围可扩到 5×5。</p>
+          </article>
+          <article class="flow-step" data-step="STEP 02">
+            <h3>挑收件人</h3>
+            <p>兴趣管理模块根据距离、队友、交战关系等排序，再受<strong>每人示例 20～50 名玩家</strong>的名额限制。</p>
+          </article>
+          <article class="flow-step" data-step="STEP 03">
+            <h3>发消息</h3>
+            <p>一次事件只打包一次，随后遍历邻域内玩家，确认接收者已经同步发送者，再<strong>逐连接写入 TCP 缓冲</strong>。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="grid" aria-labelledby="grid-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">02 / 空间范围</div>
+          <h2 id="grid-title">点一下格子，看九宫格怎么跟着移动</h2>
+          <p>每个小格代表一个网格。青色 3×3 是玩家候选区；浅黄色外圈扩展到 NPC 的 5×5 候选区。这是说明空间关系的示意图。</p>
+        </div>
+        <div class="map-layout">
+          <div class="map-frame">
+            <h3>你现在站在哪个格子？</h3>
+            <p class="map-hint">点击中央九格移动“我”；外围格子用于完整展示 5×5 范围。</p>
+            <div class="map-grid" id="mapGrid" role="group" aria-label="可点击的七乘七 Region 示意图"></div>
+            <div class="legend" aria-label="图例">
+              <span><i class="swatch observer" aria-hidden="true"></i>我</span>
+              <span><i class="swatch player" aria-hidden="true"></i>玩家九宫格</span>
+              <span><i class="swatch npc" aria-hidden="true"></i>NPC 5×5</span>
+              <span><i class="swatch" aria-hidden="true"></i>范围外</span>
+            </div>
+          </div>
+          <div class="map-copy">
+            <h3>格内移动不改网格候选范围</h3>
+            <p>角色在原格内走动，网格归属不变；已同步名单仍可能因移动距离等条件重排。跨到相邻格时，服务端比较新旧范围：例如水平跨一格，旧、新九宫格重叠 6 格，只需处理退出的 3 格和进入的 3 格。</p>
+            <p id="mapResult" class="map-result" aria-live="polite">从中心格开始。试着点它右边一格。</p>
+            <p class="subtle-note">注意：玩家在格线附近来回走，候选进出事件仍可能反复出现。可为 NPC 设置进入与离开距离不同的缓冲；玩家名单的既有关系加权并不等于空间迟滞。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="selection" aria-labelledby="selection-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">03 / 三种人数</div>
+          <h2>附近有很多人，不代表每个人都要收到全部移动</h2><p>初学 AOI 最容易把“在同一格”“在候选表”“已经同步到客户端”当成一回事。它们的成本不同。</p>
+        </div>
+        <div class="selection">
+          <article>
+            <span class="icon" aria-hidden="true">①</span>
+            <h3>场景人数 N</h3>
+            <p>N 是同一实例的人数。以下把 480 人作为可调的教学输入，不代表实际系统容量。</p></article>
+          <article>
+            <span class="icon" aria-hidden="true">②</span>
+            <h3>空间候选 C</h3>
+            <p>九宫格里有哪些玩家。挤在一个格子时，广播每次仍可能检查接近 <strong>N 个候选者</strong>。</p>
+          </article>
+          <article>
+            <span class="icon" aria-hidden="true">③</span>
+            <h3>已同步人数 K</h3>
+            <p>K 是每个观察者选择同步的其他玩家数量。交互示例取 20～50 人；实际系统应由体验与性能测试决定。</p></article>
+        </div>
+        <div>入视野的建档批次与持续移动的更新频率是不同参数。下面的频率和名额仅用于演示。</div></div>
+    </section>
+
+    <section class="chapter" id="calculator" aria-labelledby="calculator-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">04 / 动手算</div>
+          <h2 id="calculator-title">拖动参数，看看哪笔账先涨</h2>
+          <p>模型假设所有人持续移动并挤在同一个网格；每人的同步名单都已填满。结果是<strong>移动消息的应用层逻辑字节</strong>，不含战斗、NPC、视野快照及 TCP/IP 开销。</p>
+        </div>
+        <div class="calculator">
+          <div class="calc-top">
+            <div><h3>同一热点计算器</h3><p>先点一个场景人数，再调动其余参数。</p></div>
+            <div class="presets" role="group" aria-label="场景人数快捷选项">
+              <button class="preset" type="button" data-n="100" aria-pressed="false">100 人示例分线</button>
+              <button class="preset" type="button" data-n="250" aria-pressed="false">250 人示例</button>
+              <button class="preset" type="button" data-n="480" aria-pressed="true">480 示例人数</button>
+              <button class="preset" type="button" data-n="500" aria-pressed="false">500 题设推演</button>
+            </div>
+          </div>
+          <div class="controls">
+            <div class="control"><label for="people">同格移动人数 N <output id="peopleOut" for="people">480</output></label><input type="range" id="people" min="20" max="500" step="1" value="480"></div>
+            <div class="control"><label for="visible">每人同步其他玩家数 K <output id="visibleOut" for="visible">50</output></label><input type="range" id="visible" min="20" max="50" step="1" value="50"></div>
+            <div class="control"><label for="frequency">每人移动次数 q / 秒 <output id="frequencyOut" for="frequency">5</output></label><input type="range" id="frequency" min="1" max="10" step="1" value="5"></div>
+            <div class="control"><label for="packet">每条逻辑包 S</label><select id="packet"><option value="60">60 B / 小包假设</option><option value="80" selected>80 B / 示例</option><option value="120">120 B / 大包假设</option></select></div>
+          </div>
+          <p class="assumption" id="assumption">480 人是示例输入；80 B 是用于公式演示的假设，不是实测平均包长。</p>
+          <div class="metrics" aria-live="polite">
+            <div class="metric"><small>候选检查 / 秒</small><strong id="scanValue">115.20 万</strong><span>扫描成本，近似 q × N²</span></div>
+            <div class="metric"><small>真正移动发送 / 秒</small><strong id="sendValue">12.00 万</strong><span>网络扇出，至多 q × N × min(K,N−1)</span></div>
+            <div class="metric"><small>移动逻辑出口</small><strong id="bandValue">76.80 Mb/s</strong><span>上式再乘 S × 8</span></div>
+          </div>
+          <div class="bar-chart" aria-label="所有人互见与同步名额裁剪的移动出口比较">
+            <div class="bar-row"><span>所有人互见</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><strong id="naiveValue">735.74 Mb/s</strong></div>
+            <div class="bar-row"><span>同步 K 人</span><div class="bar-track"><div class="bar-fill capped" id="cappedBar" style="width:10.44%"></div></div><strong id="cappedValue">76.80 Mb/s</strong></div>
+          </div>
+          <p class="formula"><code>扫描 ≈ qN²</code>，<code>发送 ≤ qN·min(K,N−1)</code>，<code>出口 ≤ 8SqN·min(K,N−1)</code>。改变 K 会减小发送量；在逐人遍历候选的实现上，同格候选扫描仍随 N² 增长。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="capacity" aria-labelledby="capacity-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">05 / 容量边界</div>
+          <h2 id="capacity-title">500 人是挤在一条线，还是分成五条线？</h2>
+          <p>分线把不同实例的人分开，改变同格候选规模。下图只是 500 人、q=5/s、K=50、S=80 B 的数学推演。</p></div>
+        <div class="split-layout">
+          <article class="split-card">
+            <h3>一条线：500 人挤在一格</h3>
+            <p>每次移动都要面对约 500 个同格候选者。</p>
+            <div class="people-row" aria-hidden="true"><div class="people-column full">500</div></div>
+            <div class="split-numbers"><span>候选检查 <strong>125 万次/秒</strong></span><span>移动出口 <strong>80 Mb/s</strong></span></div>
+          </article>
+          <article class="split-card">
+            <h3>五条线：100 + 100 + 100 + 100 + 100</h3>
+            <p>假设将 500 人分成五个实例；实际分配策略由系统设计决定。</p><div class="people-row" aria-hidden="true"><div class="people-column w120">100</div><div class="people-column w120">100</div><div class="people-column w120">100</div><div class="people-column w120">100</div><div class="people-column w20">100</div></div>
+            <div class="split-numbers"><span>候选检查 <strong>25 万次/秒</strong></span><span>移动出口 <strong>80 Mb/s</strong></span></div>
+          </article>
+        </div>
+        <p>分线降低每个实例的候选扫描量；实例与机器并非一一对应，实际分布应通过监控确认。</p><div>稳定容量需要同时检查出口、CPU、帧耗时和发送队列；示例计算不能代替压测。</div></div>
+    </section>
+
+    <section class="chapter" id="crowd" aria-labelledby="crowd-title">
+      <div class="shell">
+        <div class="section-heading">
+          <div class="chapter-number">06 / 人群挤在一起时</div>
+          <h2>人群挤在一起时，可以从哪些层面优化？</h2><p>世界 Boss 和主城会让人群自然聚集。降低出口、扫描和客户端负担，需要看清每个办法省的是哪一笔成本。</p>
+        </div>
+        <table class="compare-table">
+          <thead><tr><th scope="col">手段</th><th scope="col">适用情况</th><th scope="col">主要作用与边界</th></tr></thead>
+          <tbody>
+            <tr><td>人数上限与优先级</td><td><span class="status future">可选方案</span></td><td>按距离、队友、交战等选 20～50 人；减少移动扇出，同格候选扫描仍可能接近 N²。</td></tr>
+            <tr><td>分线</td><td><span class="status future">可选方案</span></td><td>不同实例互不构成 AOI 关系；不能让全部人仍在同一场战斗中。</td></tr>
+            <tr><td>NPC 距离缓冲</td><td><span class="status future">可选方案</span></td><td>NPC 可以设置退出距离缓冲；玩家格线附近仍可能反复更新候选关系。</td></tr>
+            <tr><td>群战协议过滤</td><td><span class="status future">可选方案</span></td><td>可用阈值过滤部分移动、技能与 Buff 协议；需要明确配置和表现验收。</td></tr>
+            <tr><td>近远分频、位压缩、动态半径</td><td><span class="status future">可选方案</span></td><td>减少更新频率或单包字节；要验证画面平滑度、误差与弱网纠偏。</td></tr>
+            <tr><td>按已选收件人直接扇出</td><td><span class="status future">可选方案</span></td><td>用额外订阅索引换取更少的同格接收者扫描；需要维护进出视野的一致性。</td></tr>
+          </tbody>
+        </table>
+        <div>公式只估算移动消息的应用层出口。战斗、NPC、网络开销和真实包长都需要单独测量。</div></div>
+    </section>
+
+    
+  </main>
+  <footer class="footer"><div class="shell">AOI 入门 · 通用架构示例 · 页面可离线使用 · <a href="./12-aoi-advanced.html">阅读篇章 2：AOI 进阶 →</a></div></footer>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const mapGrid = document.getElementById("mapGrid");
+      const mapResult = document.getElementById("mapResult");
+      const cells = [];
+      let observer = { x: 3, y: 3 };
+
+      function regionSet(center, radius) {
+        const result = new Set();
+        for (let y = 0; y < 7; y++) {
+          for (let x = 0; x < 7; x++) {
+            if (Math.abs(x - center.x) <= radius && Math.abs(y - center.y) <= radius) {
+              result.add(`${x},${y}`);
+            }
+          }
+        }
+        return result;
+      }
+
+      function renderMap(next, announce) {
+        const oldRegion = regionSet(observer, 1);
+        const newRegion = regionSet(next, 1);
+        const playerRegion = newRegion;
+        const npcRegion = regionSet(next, 2);
+        let entered = 0;
+        let left = 0;
+        for (const key of newRegion) if (!oldRegion.has(key)) entered++;
+        for (const key of oldRegion) if (!newRegion.has(key)) left++;
+        observer = next;
+        for (const cell of cells) {
+          const key = `${cell.x},${cell.y}`;
+          const isObserver = cell.x === next.x && cell.y === next.y;
+          const rangeName = isObserver ? "我所在的格子" : playerRegion.has(key) ? "玩家九宫格候选" : npcRegion.has(key) ? "NPC 外圈候选" : "候选范围外";
+          cell.element.className = `map-cell${npcRegion.has(key) ? " npc" : ""}${playerRegion.has(key) ? " player" : ""}${isObserver ? " observer" : ""}`;
+          cell.element.textContent = isObserver ? "我" : "";
+          cell.element.setAttribute("aria-pressed", String(isObserver));
+          cell.element.setAttribute("aria-label", `第 ${cell.y + 1} 行、第 ${cell.x + 1} 列：${rangeName}${cell.selectable ? "；点击移动到这里" : "；展示范围用"}`);
+        }
+        if (announce) {
+          mapResult.textContent = entered || left
+            ? `这次移动：玩家九宫格新增 ${entered} 格、退出 ${left} 格。服务端只需处理变化部分的关系。`
+            : "仍在原格子；九宫格候选范围没有变化。";
+        }
+      }
+
+      for (let y = 0; y < 7; y++) {
+        for (let x = 0; x < 7; x++) {
+          const element = document.createElement("button");
+          element.type = "button";
+          const selectable = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+          element.disabled = !selectable;
+          if (selectable) element.addEventListener("click", () => renderMap({ x, y }, true));
+          mapGrid.appendChild(element);
+          cells.push({ x, y, element, selectable });
+        }
+      }
+      renderMap(observer, false);
+
+      const fields = {
+        people: document.getElementById("people"),
+        visible: document.getElementById("visible"),
+        frequency: document.getElementById("frequency"),
+        packet: document.getElementById("packet")
+      };
+      const presets = [...document.querySelectorAll(".preset")];
+      const fixed = (value) => value.toFixed(2);
+      const count = (value) => value >= 10000 ? `${fixed(value / 10000)} 万` : value.toLocaleString("zh-CN");
+
+      function calculate() {
+        const n = Number(fields.people.value);
+        const k = Number(fields.visible.value);
+        const q = Number(fields.frequency.value);
+        const s = Number(fields.packet.value);
+        const selected = Math.min(k, n - 1);
+        const scan = q * n * n;
+        const sends = q * n * selected;
+        const cappedMbps = 8 * sends * s / 1e6;
+        const naiveMbps = 8 * q * n * (n - 1) * s / 1e6;
+
+        document.getElementById("peopleOut").value = String(n);
+        document.getElementById("visibleOut").value = String(k);
+        document.getElementById("frequencyOut").value = String(q);
+        document.getElementById("scanValue").textContent = count(scan);
+        document.getElementById("sendValue").textContent = count(sends);
+        document.getElementById("bandValue").textContent = `${fixed(cappedMbps)} Mb/s`;
+        document.getElementById("naiveValue").textContent = `${fixed(naiveMbps)} Mb/s`;
+        document.getElementById("cappedValue").textContent = `${fixed(cappedMbps)} Mb/s`;
+        document.getElementById("cappedBar").style.width = `${Math.max(2, 100 * cappedMbps / naiveMbps)}%`;
+        document.getElementById("assumption").textContent = n === 500
+          ? `500 人是数学推演，单实例 500 人是教学假设；${s} B 是每条移动逻辑包的假设，不是实测平均值。`
+          : `${n === 480 ? "480 人是教学假设；" : "人数按同一候选区聚集计算；"}${s} B 是每条移动逻辑包的假设，不是实测平均值。`;
+
+        for (const preset of presets) {
+          preset.setAttribute("aria-pressed", String(Number(preset.dataset.n) === n));
+        }
+      }
+
+      for (const field of Object.values(fields)) {
+        field.addEventListener("input", calculate);
+        field.addEventListener("change", calculate);
+      }
+      for (const preset of presets) {
+        preset.addEventListener("click", () => {
+          fields.people.value = preset.dataset.n;
+          calculate();
+        });
+      }
+      calculate();
+    })();
+  </script>
+</body>
+</html>

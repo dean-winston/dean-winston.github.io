@@ -6,6 +6,14 @@ layout: default
   <p>记录游戏开发、AI Coding 与 Agent Engineering 的思考和实践。</p>
 </section>
 <section class="post-list" aria-label="文章列表">
+  {% assign aoi_articles = site.pages | where: 'topic', 'aoi-series' | sort: 'topic_order' %}
+  {% for article in aoi_articles %}
+  <article class="post-card">
+    <h2><a href="{{ article.url | relative_url }}">{{ article.title | escape }}</a></h2>
+    <p>{{ article.description | escape }}</p>
+    <div class="post-meta"><span>{{ article.category }}</span><span>发布于 <time datetime="{{ article.published_at }}">{{ article.published_at | slice: 0, 10 }}</time></span></div>
+  </article>
+  {% endfor %}
   {% assign articles = site.pages | where: 'layout', 'article' | sort: 'weight' %}
   {% for article in articles %}
   <article class="post-card">
